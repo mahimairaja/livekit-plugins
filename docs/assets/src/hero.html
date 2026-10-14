@@ -1,0 +1,248 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>livekit-plugins hero</title>
+<style>
+@font-face { font-family: Kalam; font-weight: 400; src: url(fonts/Kalam-400.woff2) format("woff2"); }
+@font-face { font-family: Kalam; font-weight: 700; src: url(fonts/Kalam-700.woff2) format("woff2"); }
+@font-face { font-family: JBM; font-weight: 500; src: url(fonts/JetBrainsMono-500.woff2) format("woff2"); }
+html, body { margin: 0; background: #0d1117; }
+#stage {
+  width: 1280px; height: 640px; position: relative; overflow: hidden;
+  background: #0d1117;
+  background-image: radial-gradient(#1f2633 1.3px, transparent 1.3px); background-size: 24px 24px;
+}
+svg { position: absolute; inset: 0; }
+text { font-family: Kalam, cursive; fill: #e6edf3; }
+.m { fill: #8b949e; }
+.mono { font-family: JBM, monospace; font-size: 15px; fill: #8b949e; }
+</style>
+</head>
+<body>
+<div id="stage"><svg id="s" width="1280" height="640" viewBox="0 0 1280 640"></svg></div>
+<script src="node_modules/roughjs/bundled/rough.js"></script>
+<script>
+// Each element is registered with a reveal window [t0, t0+dur] (seconds). setT(t) renders frame t.
+(async () => {
+await Promise.all(["700 52px Kalam", "400 20px Kalam", "500 15px JBM"].map(f => document.fonts.load(f)));
+const NS = "http://www.w3.org/2000/svg";
+const svg = document.getElementById("s");
+const rc = rough.svg(svg);
+const C = {
+  ink: "#e6edf3", muted: "#8b949e",
+  red: "#ff7b72", redF: "#4a1d1d", green: "#7ee787", greenF: "#173d22",
+  blue: "#79c0ff", blueF: "#132f4c", violet: "#d2a8ff", violetF: "#33224f",
+  yellow: "#f2cc60", yellowF: "#47390f", teal: "#56d4dd", tealF: "#0f3b3e",
+};
+let seed = 3;
+const o = (x) => Object.assign({ stroke: C.ink, strokeWidth: 1.8, roughness: 1.3, bowing: 1.1, seed: seed++ }, x || {});
+const hf = (f, style) => ({ fill: f, fillStyle: style || "hachure", hachureGap: 7, fillWeight: 1.5 });
+
+const items = [];
+let clipN = 0;
+// mode: "wipe" (left-to-right clip), "fade", "pop" (scale from centre)
+function reg(build, box, t0, dur, mode) {
+  const g = document.createElementNS(NS, "g");
+  svg.appendChild(g);
+  const inner = document.createElementNS(NS, "g");
+  g.appendChild(inner);
+  build(inner);
+  let rect = null;
+  if ((mode || "wipe") === "wipe") {
+    const cp = document.createElementNS(NS, "clipPath");
+    cp.id = "c" + clipN++;
+    rect = document.createElementNS(NS, "rect");
+    rect.setAttribute("x", box[0] - 30); rect.setAttribute("y", box[1] - 30);
+    rect.setAttribute("height", box[3] + 60); rect.setAttribute("width", 0);
+    cp.appendChild(rect); svg.appendChild(cp);
+    g.setAttribute("clip-path", `url(#${cp.id})`);
+  }
+  const it = { g, inner, box, t0, dur, mode: mode || "wipe", rect };
+  items.push(it);
+  return it;
+}
+const add = (parent, n) => parent.appendChild(n);
+function T(parent, x, y, s, opt) {
+  opt = opt || {};
+  const t = document.createElementNS(NS, "text");
+  t.setAttribute("x", x); t.setAttribute("y", y);
+  t.setAttribute("text-anchor", opt.anchor || "middle");
+  t.setAttribute("font-size", opt.size || 20);
+  if (opt.weight) t.setAttribute("font-weight", opt.weight);
+  if (opt.fill) t.style.fill = opt.fill;
+  if (opt.cls) t.setAttribute("class", opt.cls);
+  t.textContent = s; parent.appendChild(t); return t;
+}
+function arrow(p, x1, y1, x2, y2, ex) {
+  add(p, rc.line(x1, y1, x2, y2, o(ex)));
+  const a = Math.atan2(y2 - y1, x2 - x1), L = 11;
+  add(p, rc.line(x2, y2, x2 - L * Math.cos(a - 0.5), y2 - L * Math.sin(a - 0.5), o(ex)));
+  add(p, rc.line(x2, y2, x2 - L * Math.cos(a + 0.5), y2 - L * Math.sin(a + 0.5), o(ex)));
+}
+const ease = (x) => x <= 0 ? 0 : x >= 1 ? 1 : 1 - Math.pow(1 - x, 3);
+
+// ---------- title ----------
+let HX = 300, HW = 240;
+reg(p => {
+  T(p, 80, 92, "Local STT, TTS and LLM for LiveKit.", { anchor: "start", size: 52, weight: 700 });
+}, [80, 40, 900, 70], 0.1, 0.9);
+reg(p => {
+  const a = T(p, 80, 150, "Not on PyPI yet.", { anchor: "start", size: 52, weight: 700, cls: "m" });
+  HX = 80 + a.getComputedTextLength() + 20;
+  const b = T(p, HX, 150, "Install it today.", { anchor: "start", size: 52, weight: 700, fill: C.green });
+  HW = b.getComputedTextLength();
+}, [80, 100, 900, 70], 0.8, 0.8);
+reg(p => add(p, rc.path(`M ${HX} 168 C ${HX + HW * 0.3} 160, ${HX + HW * 0.65} 174, ${HX + HW} 164`, o({ stroke: C.green, strokeWidth: 4, roughness: 1.5 }))), [HX - 4, 154, HW + 10, 20], 1.5, 0.4);
+
+// PR badges, top right
+const prs = [["#7731", "hf LLM", C.violet, C.violetF], ["#7748", "sherpa STT", C.blue, C.blueF], ["#7749", "sherpa TTS", C.green, C.greenF]];
+prs.forEach((pr, i) => {
+  const bx = 1050, by = 38 + i * 44;
+  reg(p => {
+    add(p, rc.rectangle(bx, by, 190, 34, o({ stroke: pr[2], strokeWidth: 1.4, roughness: 0.9, ...hf(pr[3], "solid") })));
+    const t = T(p, bx + 14, by + 23, "livekit/agents" + pr[0], { anchor: "start", size: 14, cls: "mono" }); t.style.fill = pr[2];
+  }, [bx, by, 190, 34], 0.4 + i * 0.2, 0.3, "pop");
+});
+reg(p => T(p, 1145, 178, "open upstream PRs", { size: 17, cls: "m" }), [1060, 160, 170, 24], 1.2, 0.3, "fade");
+
+// ---------- terminal ----------
+const TY = 200, TX = 80, TW = 1120, TH = 54;
+reg(p => add(p, rc.rectangle(TX, TY, TW, TH, o({ stroke: C.muted, roughness: 0.8, ...hf("#161b22", "solid") }))), [TX, TY, TW, TH], 1.7, 0.4);
+reg(p => {
+  const d = T(p, TX + 20, TY + 33, "$", { anchor: "start", size: 16, cls: "mono" }); d.style.fill = C.green;
+  const t = T(p, TX + 42, TY + 33, 'pip install "livekit-plugins-sherpa @ git+https://github.com/mahimairaja/livekit-plugins#subdirectory=…"', { anchor: "start", size: 16, cls: "mono" });
+  t.style.fill = C.ink;
+}, [TX + 10, TY + 10, TW - 20, 34], 2.0, 1.6);
+
+// ---------- pipeline ----------
+const PY = 310, BH = 92, BW = 196, GAP = 40;
+const nodes = [
+  { kind: "icon", icon: "mic", w: 64, label: "you" },
+  { title: "sherpa.STT", sub: "speech → text", tag: "zipformer 70M", c: C.blue, f: C.blueF },
+  { title: "hf.LLM", sub: "any HF chat model", tag: "transformers", c: C.violet, f: C.violetF },
+  { title: "sherpa.TTS", sub: "text → speech", tag: "Kokoro 82M", c: C.green, f: C.greenF },
+  { kind: "icon", icon: "speaker", w: 64, label: "agent" },
+];
+let total = nodes.reduce((s, n) => s + (n.w || BW), 0) + GAP * (nodes.length - 1);
+let x = (1280 - total) / 2;
+nodes.forEach(n => { n.x = x; n.w = n.w || BW; n.cx = x + n.w / 2; x += n.w + GAP; });
+
+const icons = {
+  mic(p, cx, cy, col) {
+    add(p, rc.rectangle(cx - 12, cy - 34, 24, 40, o({ stroke: col, ...hf("#30363d", "solid") })));
+    add(p, rc.arc(cx, cy - 6, 44, 44, 0, Math.PI, false, o({ stroke: col, strokeWidth: 2.4 })));
+    add(p, rc.line(cx, cy + 16, cx, cy + 30, o({ stroke: col, strokeWidth: 2.4 })));
+    add(p, rc.line(cx - 14, cy + 30, cx + 14, cy + 30, o({ stroke: col, strokeWidth: 2.4 })));
+  },
+  speaker(p, cx, cy, col) {
+    add(p, rc.polygon([[cx - 24, cy - 10], [cx - 12, cy - 10], [cx + 4, cy - 26], [cx + 4, cy + 26], [cx - 12, cy + 10], [cx - 24, cy + 10]], o({ stroke: col, ...hf("#30363d", "solid") })));
+    add(p, rc.arc(cx + 6, cy, 30, 30, -0.9, 0.9, false, o({ stroke: col, strokeWidth: 2.4 })));
+    add(p, rc.arc(cx + 6, cy, 54, 54, -0.9, 0.9, false, o({ stroke: col, strokeWidth: 2.4 })));
+  },
+};
+
+const flashes = [];
+nodes.forEach((n, i) => {
+  const t0 = 3.7 + i * 0.3;
+  const cy = PY + BH / 2;
+  if (n.kind === "icon") {
+    reg(p => {
+      icons[n.icon](p, n.cx, cy, C.ink);
+      T(p, n.cx, PY + BH + 30, n.label, { size: 20, cls: "m" });
+    }, [n.x, PY, n.w, BH + 40], t0, 0.35);
+  } else {
+    reg(p => {
+      add(p, rc.rectangle(n.x, PY, n.w, BH, o({ stroke: n.c, ...hf(n.f) })));
+      T(p, n.cx, PY + 40, n.title, { size: 26, weight: 700 });
+      T(p, n.cx, PY + 68, n.sub, { size: 17, cls: "m" });
+    }, [n.x, PY, n.w, BH], t0, 0.4);
+    reg(p => {
+      const tg = T(p, n.cx, PY + BH + 32, n.tag, { size: 15, cls: "mono" });
+      tg.style.fill = n.c;
+      const tw = Math.max(84, tg.getComputedTextLength() + 26);
+      p.insertBefore(rc.rectangle(n.cx - tw / 2, PY + BH + 12, tw, 28, o({ stroke: n.c, strokeWidth: 1.4, roughness: 0.9, ...hf(n.f, "solid") })), tg);
+    }, [n.cx - 70, PY + BH + 8, 140, 36], t0 + 0.3, 0.25, "pop");
+    const glow = document.createElementNS(NS, "rect");
+    glow.setAttribute("x", n.x - 4); glow.setAttribute("y", PY - 4);
+    glow.setAttribute("width", n.w + 8); glow.setAttribute("height", BH + 8);
+    glow.setAttribute("rx", 10); glow.setAttribute("fill", "none");
+    glow.setAttribute("stroke", n.c); glow.setAttribute("stroke-width", 3);
+    glow.style.filter = `drop-shadow(0 0 10px ${n.c})`;
+    glow.setAttribute("opacity", 0);
+    svg.appendChild(glow);
+    flashes.push({ el: glow, cx: n.cx });
+  }
+  if (i < nodes.length - 1) {
+    reg(p => arrow(p, n.x + n.w + 4, cy, n.x + n.w + GAP - 4, cy, { stroke: C.muted, strokeWidth: 1.8 }),
+      [n.x + n.w, cy - 12, GAP, 24], t0 + 0.22, 0.15);
+  }
+});
+
+const pk = document.createElementNS(NS, "circle");
+pk.setAttribute("r", 9); pk.setAttribute("fill", "#ffffff");
+pk.style.filter = "drop-shadow(0 0 8px #79c0ff) drop-shadow(0 0 16px #79c0ff)";
+pk.setAttribute("opacity", 0);
+svg.appendChild(pk);
+const PK0 = 5.6, PK1 = 8.2;
+const pkX0 = nodes[0].cx, pkX1 = nodes[nodes.length - 1].cx;
+
+// ---------- code line ----------
+reg(p => {
+  const t = T(p, 640, 508, "from livekit.plugins import sherpa, hf", { size: 18, cls: "mono" });
+  t.style.fill = C.ink;
+  T(p, 640, 536, "same package and import names as upstream, so moving to PyPI later changes nothing", { size: 18, cls: "m" });
+}, [200, 486, 880, 60], 8.4, 0.6, "fade");
+
+// ---------- stats row ----------
+const stats = [["0", "API keys"], ["0", "cloud calls"], ["3", "upstream PRs"], ["1", "pip install"]];
+const SW = 210, SG = 26, sx0 = (1280 - (stats.length * SW + (stats.length - 1) * SG)) / 2;
+stats.forEach((s, i) => {
+  const sx = sx0 + i * (SW + SG);
+  reg(p => {
+    T(p, sx + SW / 2, 594, s[0], { size: 30, weight: 700, fill: [C.green, C.green, C.violet, C.yellow][i] });
+    T(p, sx + SW / 2, 620, s[1], { size: 18, cls: "m" });
+  }, [sx, 560, SW, 70], 8.9 + i * 0.18, 0.3, "pop");
+});
+
+const DURATION = 12.5;
+function setT(t) {
+  for (const it of items) {
+    const k = ease((t - it.t0) / it.dur);
+    if (it.mode === "wipe") {
+      it.rect.setAttribute("width", (it.box[2] + 60) * k);
+      it.g.setAttribute("opacity", k > 0 ? 1 : 0);
+    } else if (it.mode === "fade") {
+      it.g.setAttribute("opacity", k);
+    } else {
+      const cx = it.box[0] + it.box[2] / 2, cy = it.box[1] + it.box[3] / 2;
+      const s = k <= 0 ? 0.001 : 0.6 + 0.4 * k + 0.08 * Math.sin(Math.PI * k);
+      it.g.setAttribute("opacity", k);
+      it.inner.setAttribute("transform", `translate(${cx} ${cy}) scale(${s}) translate(${-cx} ${-cy})`);
+    }
+  }
+  // packet
+  const u = (t - PK0) / (PK1 - PK0);
+  if (u >= 0 && u <= 1) {
+    const px = pkX0 + (pkX1 - pkX0) * u;
+    pk.setAttribute("cx", px); pk.setAttribute("cy", PY + BH / 2 + Math.sin(u * Math.PI * 12) * 2);
+    pk.setAttribute("opacity", Math.min(1, u * 8, (1 - u) * 8));
+  } else pk.setAttribute("opacity", 0);
+  const pxNow = pkX0 + (pkX1 - pkX0) * Math.max(0, Math.min(1, u));
+  for (const f of flashes) {
+    const d = Math.abs(pxNow - f.cx);
+    const on = u >= 0 && u <= 1.05 ? Math.max(0, 1 - d / 90) : 0;
+    f.el.setAttribute("opacity", on);
+  }
+  // fade everything out at the very end so the GIF loops cleanly
+  const out = Math.max(0, Math.min(1, (t - (DURATION - 0.6)) / 0.6));
+  svg.style.opacity = 1 - out;
+}
+window.setT = setT;
+window.DURATION = DURATION;
+setT(location.hash ? parseFloat(location.hash.slice(1)) : DURATION - 1);
+window.ready = true;
+})();
+</script>
+</body>
+</html>

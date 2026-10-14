@@ -1,8 +1,22 @@
-# livekit-plugins
+<p align="center">
+  <img src="docs/assets/hero.gif" alt="livekit-plugins: local STT, TTS and LLM for LiveKit Agents, installable from GitHub today" width="100%">
+</p>
 
-Local STT, TTS and LLM plugins for [LiveKit Agents](https://github.com/livekit/agents), installable from GitHub today while their upstream PRs are in review.
+<h3 align="center">Local STT, TTS and LLM plugins for LiveKit Agents. Not on PyPI yet. Install them today.</h3>
 
-No API keys. No cloud. Every model runs in your agent process.
+<p align="center">
+  <img src="https://img.shields.io/badge/python-3.12%20to%203.14-79c0ff?style=flat-square&labelColor=0d1117" alt="Python 3.12 to 3.14">
+  <img src="https://img.shields.io/badge/livekit--agents-1.8.6-d2a8ff?style=flat-square&labelColor=0d1117" alt="livekit-agents 1.8.6">
+  <img src="https://img.shields.io/badge/API%20keys-0-7ee787?style=flat-square&labelColor=0d1117" alt="0 API keys">
+  <img src="https://img.shields.io/badge/install-from%20GitHub-f2cc60?style=flat-square&labelColor=0d1117" alt="install from GitHub">
+</p>
+
+Every model runs inside your agent process. No API keys, no cloud, no per-minute bill.
+Each plugin is the code from an open [livekit/agents](https://github.com/livekit/agents) PR, packaged so you can `pip install` it from this repo while review continues.
+
+<p align="center">
+  <img src="docs/assets/pipeline.png" alt="What's inside: livekit-plugins-sherpa (STT and TTS) and livekit-plugins-hf (LLM), imported by your agent" width="100%">
+</p>
 
 | Package | What it does | Upstream PR |
 | --- | --- | --- |
@@ -32,7 +46,7 @@ session = AgentSession(
     stt=sherpa.STT(),  # streaming zipformer, English
     llm=hf.LLM(model="Qwen/Qwen2.5-1.5B-Instruct"),
     tts=sherpa.TTS(voice="af_heart"),  # Kokoro
-    vad=silero.VAD.load(),                 # pip install livekit-plugins-silero
+    vad=silero.VAD.load(),  # pip install livekit-plugins-silero
 )
 ```
 
