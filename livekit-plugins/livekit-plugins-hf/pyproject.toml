@@ -1,0 +1,47 @@
+[build-system]
+requires = ["hatchling==1.32.4"]
+build-backend = "hatchling.build"
+
+[project]
+name = "livekit-plugins-hf"
+dynamic = ["version"]
+description = "LiveKit Agents plugin for running Hugging Face chat models locally"
+readme = "README.md"
+license = "Apache-2.0"
+requires-python = ">=3.12,<3.15"
+authors = [{ name = "LiveKit", email = "hello@livekit.io" }]
+keywords = ["voice", "ai", "realtime", "audio", "video", "livekit", "webrtc", "huggingface"]
+classifiers = [
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Topic :: Multimedia :: Sound/Audio",
+    "Topic :: Multimedia :: Video",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: 3 :: Only",
+]
+dependencies = [
+    "livekit-agents==1.8.6",
+    "transformers==5.19.0",
+    "huggingface-hub==2.2.0",
+    "torch==2.14.1",
+    "accelerate==1.15.0",
+]
+
+[project.urls]
+Documentation = "https://docs.livekit.io"
+Website = "https://livekit.io/"
+Source = "https://github.com/mahimairaja/livekit-plugins"
+Upstream = "https://github.com/livekit/agents"
+
+[tool.hatch.version]
+path = "livekit/plugins/hf/version.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["livekit"]
+
+[tool.hatch.build.targets.sdist]
+include = ["/livekit"]
