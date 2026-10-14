@@ -1,0 +1,78 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>livekit-plugins packages</title>
+<style>
+@font-face { font-family: Kalam; font-weight: 400; src: url(fonts/Kalam-400.woff2) format("woff2"); }
+@font-face { font-family: Kalam; font-weight: 700; src: url(fonts/Kalam-700.woff2) format("woff2"); }
+@font-face { font-family: JBM; font-weight: 500; src: url(fonts/JetBrainsMono-500.woff2) format("woff2"); }
+html, body { margin: 0; background: #0d1117; }
+#stage {
+  width: 1280px; height: 600px; position: relative; overflow: hidden;
+  background: #0d1117;
+  background-image: radial-gradient(#1f2633 1.3px, transparent 1.3px); background-size: 24px 24px;
+}
+svg { position: absolute; inset: 0; }
+text { font-family: Kalam, cursive; fill: #e6edf3; }
+.m { fill: #8b949e; }
+.mono { font-family: JBM, monospace; font-size: 15px; fill: #8b949e; }
+</style>
+</head>
+<body>
+<div id="stage"><svg id="s" width="1280" height="600" viewBox="0 0 1280 600"></svg></div>
+<script src="node_modules/roughjs/bundled/rough.js"></script>
+<script>
+(async () => {
+await Promise.all(["700 54px Kalam", "400 20px Kalam", "500 15px JBM"].map(f => document.fonts.load(f)));
+const NS = "http://www.w3.org/2000/svg", svg = document.getElementById("s"), rc = rough.svg(svg);
+const C = { ink: "#e6edf3", muted: "#8b949e", red: "#ff7b72", green: "#7ee787", greenF: "#173d22",
+  blue: "#79c0ff", blueF: "#132f4c", violet: "#d2a8ff", violetF: "#33224f", yellow: "#f2cc60", yellowF: "#47390f",
+  teal: "#56d4dd", tealF: "#0f3b3e" };
+let seed = 11;
+const o = x => Object.assign({ stroke: C.ink, strokeWidth: 1.8, roughness: 1.2, bowing: 1, seed: seed++ }, x || {});
+const hf = (f, st) => ({ fill: f, fillStyle: st || "hachure", hachureGap: 8, fillWeight: 1.3 });
+const add = n => svg.appendChild(n);
+function T(x, y, s, opt) {
+  opt = opt || {}; const t = document.createElementNS(NS, "text");
+  t.setAttribute("x", x); t.setAttribute("y", y); t.setAttribute("text-anchor", opt.anchor || "middle");
+  t.setAttribute("font-size", opt.size || 20); if (opt.weight) t.setAttribute("font-weight", opt.weight);
+  if (opt.cls) t.setAttribute("class", opt.cls); if (opt.fill) t.style.fill = opt.fill;
+  t.textContent = s; svg.appendChild(t); return t;
+}
+function arrow(x1, y1, x2, y2, ex) {
+  add(rc.line(x1, y1, x2, y2, o(ex))); const a = Math.atan2(y2 - y1, x2 - x1), L = 11;
+  add(rc.line(x2, y2, x2 - L * Math.cos(a - 0.5), y2 - L * Math.sin(a - 0.5), o(ex)));
+  add(rc.line(x2, y2, x2 - L * Math.cos(a + 0.5), y2 - L * Math.sin(a + 0.5), o(ex)));
+}
+T(60, 62, "What's inside", { anchor: "start", size: 40, weight: 700 });
+T(60, 94, "two packages, laid out like livekit/agents, installed straight from GitHub", { anchor: "start", size: 20, cls: "m" });
+
+const MX = 640, MY = 128, MW = 420, MH = 86;
+add(rc.rectangle(MX - MW / 2, MY, MW, MH, o({ ...hf("#21262d", "solid") })));
+T(MX, MY + 38, "your_agent.py", { size: 28, weight: 700 });
+const im = T(MX, MY + 66, "from livekit.plugins import sherpa, hf", { size: 15, cls: "mono" });
+
+const cards = [
+  { name: "livekit-plugins-sherpa", c: C.blue, f: C.blueF, lines: [["STT", "streaming: zipformer"], ["", "batch: Whisper, Moonshine"], ["TTS", "Kokoro, Kitten, Piper"]], note: "sherpa-onnx · no torch · #7748 #7749" },
+  { name: "livekit-plugins-hf", c: C.violet, f: C.violetF, lines: [["LLM", "any Hugging Face chat model"], ["", "streaming + function tools"], ["", "in process via transformers"]], note: "transformers · torch · #7731" },
+];
+const CW = 460, CG = 60, CY = 286, CH = 222, cx0 = (1280 - (2 * CW + CG)) / 2;
+cards.forEach((k, i) => {
+  const x = cx0 + i * (CW + CG), cx = x + CW / 2;
+  arrow(MX + (i - 0.5) * 120, MY + MH + 4, cx, CY - 8, { stroke: C.muted, strokeWidth: 1.6 });
+  add(rc.rectangle(x, CY, CW, CH, o({ stroke: k.c, ...hf(k.f) })));
+  const nm = T(cx, CY + 36, k.name, { size: 17, cls: "mono" }); nm.style.fill = k.c;
+  k.lines.forEach((l, j) => {
+    const y = CY + 80 + j * 36;
+    if (l[0]) T(x + 30, y, l[0], { anchor: "start", size: 22, weight: 700, fill: k.c });
+    T(x + 94, y, l[1], { anchor: "start", size: 20 });
+  });
+  T(cx, CY + CH - 20, k.note, { size: 16, cls: "m" });
+});
+T(640, 552, "Temporary home. Each package moves to PyPI when its upstream PR merges.", { size: 20, cls: "m" });
+add(rc.line(330, 566, 950, 566, o({ stroke: C.green, strokeWidth: 2.5, roughness: 1.6 })));
+window.ready = true;
+})();
+</script>
+</body></html>
