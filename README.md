@@ -2,7 +2,7 @@
   <img src="docs/assets/hero.gif" alt="livekit-plugins: local STT, TTS and LLM for LiveKit Agents, installable from GitHub today" width="100%">
 </p>
 
-<h3 align="center">Local STT, TTS and LLM plugins for LiveKit Agents. Not on PyPI yet. Install them today.</h3>
+<h3 align="center">Local STT, TTS and LLM plugins for LiveKit Agents, installable from GitHub ahead of their PyPI release.</h3>
 
 <p align="center">
   <img src="https://img.shields.io/badge/python-3.12%20to%203.14-79c0ff?style=flat-square&labelColor=0d1117" alt="Python 3.12 to 3.14">
@@ -11,19 +11,30 @@
   <img src="https://img.shields.io/badge/install-from%20GitHub-f2cc60?style=flat-square&labelColor=0d1117" alt="install from GitHub">
 </p>
 
-Every model runs inside your agent process. No API keys, no cloud, no per-minute bill.
-Each plugin is the code from an open [livekit/agents](https://github.com/livekit/agents) PR, packaged so you can `pip install` it from this repo while review continues.
+This repository packages plugins that are under review in [livekit/agents](https://github.com/livekit/agents) so they can be installed and used before they are released. All models run inside the agent process: no API keys, no network calls at inference time, no per-minute cost.
 
 <p align="center">
   <img src="docs/assets/pipeline.png" alt="What's inside: livekit-plugins-sherpa (STT and TTS) and livekit-plugins-hf (LLM), imported by your agent" width="100%">
 </p>
 
-| Package | What it does | Upstream PR |
-| --- | --- | --- |
-| [`livekit-plugins-sherpa`](livekit-plugins/livekit-plugins-sherpa) | Speech-to-text (streaming zipformer, or batch Whisper, Moonshine, SenseVoice, Parakeet) and text-to-speech (Kokoro, Kitten, Piper) on [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx). ONNX Runtime only, no torch, no GPU. | STT [#7748](https://github.com/livekit/agents/pull/7748), TTS [#7749](https://github.com/livekit/agents/pull/7749) |
-| [`livekit-plugins-hf`](livekit-plugins/livekit-plugins-hf) | LLM: any Hugging Face chat model, run in process with `transformers`. Streaming and function tools. | [#7731](https://github.com/livekit/agents/pull/7731) |
+## Plugins
 
-Package and import names match upstream (`from livekit.plugins import sherpa, hf`). When a PR merges, switch to the PyPI release and change nothing else.
+| Package | Provides | Description |
+| --- | --- | --- |
+| [`livekit-plugins-sherpa`](livekit-plugins/livekit-plugins-sherpa) | STT, TTS | Speech-to-text (streaming Zipformer; batch Whisper, Moonshine, SenseVoice, Parakeet) and text-to-speech (Kokoro, Kitten, Piper) on [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx). ONNX Runtime only: no PyTorch, no GPU required. |
+| [`livekit-plugins-hf`](livekit-plugins/livekit-plugins-hf) | LLM | Any Hugging Face chat model, run in process with `transformers`. Supports streaming and function tools. |
+
+## Upstream status
+
+Each plugin tracks an open pull request in livekit/agents. When a PR merges, the plugin ships on PyPI as an official LiveKit package and the copy here is retired. `livekit-plugins-sherpa` is retired once both its STT and TTS PRs have merged.
+
+| Plugin | Component | Upstream PR | Status |
+| --- | --- | --- | --- |
+| `livekit-plugins-hf` | LLM | [livekit/agents#7731](https://github.com/livekit/agents/pull/7731) | Open, in review |
+| `livekit-plugins-sherpa` | STT | [livekit/agents#7748](https://github.com/livekit/agents/pull/7748) | Open, in review |
+| `livekit-plugins-sherpa` | TTS | [livekit/agents#7749](https://github.com/livekit/agents/pull/7749) | Open, in review |
+
+Package and import names match upstream (`from livekit.plugins import sherpa, hf`). Once a plugin is on PyPI, replace the GitHub install with `pip install <package>`; no code changes are needed.
 
 ## Install
 
@@ -32,7 +43,7 @@ pip install "livekit-plugins-sherpa @ git+https://github.com/mahimairaja/livekit
 pip install "livekit-plugins-hf @ git+https://github.com/mahimairaja/livekit-plugins#subdirectory=livekit-plugins/livekit-plugins-hf"
 ```
 
-With uv, use `uv add` with the same string. Add `@<commit>` after the repo URL to pin a commit.
+With uv, use `uv add` with the same string. To pin a commit, append `@<commit>` to the repository URL.
 
 Requires Python 3.12 to 3.14. Dependencies are pinned exactly, including `livekit-agents==1.8.6`.
 
@@ -50,21 +61,21 @@ session = AgentSession(
 )
 ```
 
-Fetch the models once while online. After that the agent never downloads at runtime:
+Download the models once while online. The agent does not download anything at runtime:
 
 ```bash
 python my_agent.py download-files
 ```
 
-Options, model lists and tool calling are in each plugin's README.
+Configuration options, supported models and tool calling are documented in each plugin's README.
 
-## See it running
+## Example
 
-[local-livekit](https://github.com/mahimairaja/local-livekit) wires these plugins into one voice agent that runs with the Wi-Fi off. The write-up: [A LiveKit voice agent that runs offline](https://mahimai.ca/blog/local-livekit-voice-agent-offline).
+[local-livekit](https://github.com/mahimairaja/local-livekit) combines these plugins into a single voice agent that runs fully offline. Write-up: [A LiveKit voice agent that runs offline](https://mahimai.ca/blog/local-livekit-voice-agent-offline).
 
-## Status
+## Issues
 
-Temporary. Each plugin here is the code from its upstream PR. Once a PR merges and ships on PyPI, its package leaves this repo. Bugs that also apply upstream go to the PR.
+Bugs that also apply to the upstream code are best reported on the corresponding livekit/agents PR. Issues specific to this packaging belong here.
 
 ## Develop
 
