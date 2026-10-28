@@ -165,10 +165,15 @@ class STT(stt.STT):
         lang = language if is_given(language) else self._opts.language
         return SpeechStream(stt=self, language=lang, conn_options=conn_options)
 
-    def _invalidate_url(self) -> None:
-        """Forget a looked-up URL, e.g. after the App was stopped or redeployed."""
-        if not self._pinned_url:
-            self._base_url = None
+    def _invalidate_url(self) -> bool:
+        """Forget a looked-up URL, e.g. after the App was stopped or redeployed.
+
+        Returns whether a retry will look the deployment up again (False for a pinned URL).
+        """
+        if self._pinned_url:
+            return False
+        self._base_url = None
+        return True
 
     def _ensure_session(self) -> aiohttp.ClientSession:
         if self._session is None:
@@ -196,14 +201,18 @@ class STT(stt.STT):
             ) as resp:
                 if resp.status >= 400:
                     body = await resp.text()
-                    if resp.status == 404:
-                        self._invalidate_url()
-                    raise APIStatusError(
+                    stale_url = resp.status == 404 and self._invalidate_url()
+                    err = APIStatusError(
                         f"Modal STT request failed: {body[:200]}",
                         status_code=resp.status,
                         request_id=resp.headers.get("modal-function-call-id"),
                         body=body,
                     )
+                    if stale_url:
+                        # APIStatusError forces 4xx to non-retryable; this one is fixed by
+                        # retrying against the re-resolved URL.
+                        err.retryable = True
+                    raise err
                 result: dict[str, Any] = await resp.json()
         except TimeoutError:
             raise APITimeoutError() from None
