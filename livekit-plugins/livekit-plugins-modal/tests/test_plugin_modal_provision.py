@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import os
 import sys
+from dataclasses import dataclass
 from typing import Any
 
 import modal as modal_sdk
@@ -177,3 +178,71 @@ def test_cli_keeps_an_existing_proxy_token(
 def test_modal_sdk_pin_has_programmatic_proxy_tokens() -> None:
     # provision creates tokens through this API instead of shelling out to the CLI.
     assert hasattr(modal_sdk.Workspace.from_context(), "proxy_tokens")
+
+
+@dataclass
+class FakeToken:
+    token_id: str
+    token_secret: str = "ws-secret"
+    scoped: bool = False
+
+
+class FakeProxyTokens:
+    def __init__(self, *, scoped: bool, fail_allow: bool = False) -> None:
+        self.scoped = scoped
+        self.fail_allow = fail_allow
+        self.tokens: dict[str, FakeToken] = {}
+        self.allowed: list[tuple[str, str]] = []
+
+    def create(self) -> FakeToken:
+        token = FakeToken(f"wk-{len(self.tokens)}", scoped=self.scoped)
+        self.tokens[token.token_id] = token
+        return token
+
+    def list(self) -> list[FakeToken]:
+        return list(self.tokens.values())
+
+    def allow(self, token_id: str, environment: str) -> None:
+        if self.fail_allow:
+            raise RuntimeError("allow failed")
+        self.allowed.append((token_id, environment))
+
+    def delete(self, token_id: str) -> None:
+        del self.tokens[token_id]
+
+
+def _workspace(monkeypatch: pytest.MonkeyPatch, tokens: FakeProxyTokens) -> None:
+    workspace = type("FakeWorkspace", (), {"proxy_tokens": tokens})()
+    monkeypatch.setattr(modal_sdk.Workspace, "from_context", lambda: workspace)
+
+
+def test_proxy_token_is_not_scoped_without_rbac(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Modal rejects `allow` for unscoped tokens: "Token is not environment-scoped".
+    tokens = FakeProxyTokens(scoped=False)
+    _workspace(monkeypatch, tokens)
+
+    assert provision.create_proxy_token("main") == ("wk-0", "ws-secret")
+    assert tokens.allowed == []
+
+
+def test_proxy_token_is_allowed_into_the_environment_with_rbac(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    tokens = FakeProxyTokens(scoped=True)
+    _workspace(monkeypatch, tokens)
+
+    provision.create_proxy_token("prod")
+
+    assert tokens.allowed == [("wk-0", "prod")]
+
+
+def test_failed_proxy_token_setup_does_not_leak_the_token(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    tokens = FakeProxyTokens(scoped=True, fail_allow=True)
+    _workspace(monkeypatch, tokens)
+
+    with pytest.raises(RuntimeError, match="allow failed"):
+        provision.create_proxy_token("prod")
+
+    assert tokens.tokens == {}

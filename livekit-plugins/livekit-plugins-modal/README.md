@@ -27,7 +27,7 @@ It deploys the server if it is not there yet (rerunning it is safe), prints the 
 ```
 app      livekit-stt-whisper-large-v3-turbo (env: main)
 status   deployed now
-url      https://<workspace>-main--livekit-stt-whisper-large-v3-turbo-whisperserver-web.modal.run
+url      https://<workspace>--livekit-stt-whisper-large-v3-turbo-whispers-<hash>.modal.run
 gpu      L4
 warm     0 container(s), $0.00/h while idle
          scales to zero: the first request after idle waits for a cold start
