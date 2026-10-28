@@ -15,13 +15,13 @@
 
 ## hello
 
-Local STT, TTS and LLM plugins for [LiveKit Agents](https://github.com/livekit/agents), installable from GitHub ahead of their PyPI release. Each plugin is the code from an open livekit/agents pull request. All models run inside the agent process: no API keys, no network calls at inference time, no per-minute cost.
+STT, TTS and LLM plugins for [LiveKit Agents](https://github.com/livekit/agents), installable from GitHub ahead of their PyPI release. sherpa and hf are the code from open livekit/agents pull requests and run inside the agent process: no API keys, no network calls at inference time, no per-minute cost. modal runs on your own Modal account.
 
 <p align="center">
   <img src="docs/assets/pipeline.png" alt="What's inside: livekit-plugins-sherpa (STT and TTS) and livekit-plugins-hf (LLM), imported by your agent" width="100%">
 </p>
 
-## plugin tracker (2 plugins, 3 upstream PRs)
+## plugin tracker (3 plugins, 3 upstream PRs)
 
 <table>
   <tr>
@@ -45,6 +45,13 @@ Local STT, TTS and LLM plugins for [LiveKit Agents](https://github.com/livekit/a
     <td><a href="https://pypi.org/project/livekit-plugins-hf/"><img src="https://img.shields.io/pypi/v/livekit-plugins-hf?label=pypi&style=flat-square" alt="livekit-plugins-hf on PyPI"></a></td>
     <td><a href="livekit-plugins/livekit-plugins-hf"><img src="https://img.shields.io/badge/source-GitHub-181717?logo=github&style=flat-square" alt="livekit-plugins-hf source"></a></td>
   </tr>
+  <tr>
+    <td><a href="livekit-plugins/livekit-plugins-modal"><b>livekit-plugins-modal</b></a><br><sub>Speech-to-text on your own <a href="https://modal.com">Modal</a> GPUs: streaming Parakeet (English) or batch Whisper large-v3-turbo. Provision once from the CLI, then the agent finds the deployment by name. The one plugin here that is not local.</sub></td>
+    <td>STT</td>
+    <td>none, lives here</td>
+    <td>–</td>
+    <td><a href="livekit-plugins/livekit-plugins-modal"><img src="https://img.shields.io/badge/source-GitHub-181717?logo=github&style=flat-square" alt="livekit-plugins-modal source"></a></td>
+  </tr>
 </table>
 
 The PR and PyPI badges are live. When an upstream PR turns **merged** and the PyPI badge shows a version, the plugin is an official LiveKit package: install it with `pip install <package>` and drop the GitHub install. Package and import names already match upstream (`from livekit.plugins import sherpa, hf`), so no code changes are needed. `livekit-plugins-sherpa` leaves this repo once both its STT and TTS PRs have merged.
@@ -54,6 +61,7 @@ The PR and PyPI badges are live. When an upstream PR turns **merged** and the Py
 ```bash
 pip install "livekit-plugins-sherpa @ git+https://github.com/mahimairaja/livekit-plugins#subdirectory=livekit-plugins/livekit-plugins-sherpa"
 pip install "livekit-plugins-hf @ git+https://github.com/mahimairaja/livekit-plugins#subdirectory=livekit-plugins/livekit-plugins-hf"
+pip install "livekit-plugins-modal @ git+https://github.com/mahimairaja/livekit-plugins#subdirectory=livekit-plugins/livekit-plugins-modal"
 ```
 
 With uv, use `uv add` with the same string. To pin a commit, append `@<commit>` to the repository URL.

@@ -7,11 +7,14 @@ license = "MIT"
 requires-python = ">=3.12,<3.15"
 dependencies = [
     "livekit-plugins-hf",
+    "livekit-plugins-modal",
     "livekit-plugins-sherpa",
 ]
 
 [dependency-groups]
 dev = [
+    # Types for the Modal server templates; the containers pin the same version.
+    "fastapi==0.120.0",
     "jiwer==4.0.0",
     "mypy==2.4.0",
     "pre-commit==4.6.2",
@@ -26,6 +29,7 @@ required-version = ">=0.8.15"
 
 [tool.uv.sources]
 livekit-plugins-hf = { workspace = true }
+livekit-plugins-modal = { workspace = true }
 livekit-plugins-sherpa = { workspace = true }
 
 [tool.uv.workspace]
@@ -60,6 +64,7 @@ explicit_package_bases = true
 # One entry per plugin, so `livekit.plugins.<name>` resolves from each workspace member.
 mypy_path = [
     "$MYPY_CONFIG_FILE_DIR/livekit-plugins/livekit-plugins-hf",
+    "$MYPY_CONFIG_FILE_DIR/livekit-plugins/livekit-plugins-modal",
     "$MYPY_CONFIG_FILE_DIR/livekit-plugins/livekit-plugins-sherpa",
 ]
 namespace_packages = true
@@ -67,6 +72,11 @@ namespace_packages = true
 # Compiled extension without stubs. The plugin types it through Protocols in stt.py.
 [[tool.mypy.overrides]]
 module = "sherpa_onnx.*"
+ignore_missing_imports = true
+
+# Imported only inside the Modal containers, never installed locally.
+[[tool.mypy.overrides]]
+module = ["faster_whisper.*", "nemo.*", "silero_vad.*", "torch.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
