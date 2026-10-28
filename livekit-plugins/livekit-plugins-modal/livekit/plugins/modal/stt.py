@@ -268,11 +268,12 @@ class SpeechStream(stt.RecognizeStream):
                 self._conn_options.timeout,
             )
         except aiohttp.WSServerHandshakeError as e:
-            if e.status == 404:
-                self._modal_stt._invalidate_url()
-            raise APIStatusError(
-                f"Modal STT stream rejected: {e.message}", status_code=e.status
-            ) from e
+            err = APIStatusError(f"Modal STT stream rejected: {e.message}", status_code=e.status)
+            if e.status == 404 and self._modal_stt._invalidate_url():
+                # APIStatusError forces 4xx to non-retryable; this one is fixed by
+                # reconnecting to the re-resolved URL.
+                err.retryable = True
+            raise err from e
         except TimeoutError:
             raise APITimeoutError() from None
         except aiohttp.ClientError as e:

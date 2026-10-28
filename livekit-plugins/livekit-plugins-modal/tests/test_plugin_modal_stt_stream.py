@@ -20,6 +20,7 @@ from aiohttp.test_utils import TestServer
 from livekit import rtc
 from livekit.agents import APIConnectionError, APIConnectOptions, APIStatusError, stt
 from livekit.plugins import modal
+from livekit.plugins.modal import provision
 
 pytestmark = pytest.mark.unit
 
@@ -51,11 +52,13 @@ class FakeStream:
     connections: list[Connection] = field(default_factory=list)
     interim_after: int = 3200
     drop_first_connection_after: int | None = None
-    reject_with: int | None = None
+    reject_with: list[int] = field(default_factory=list)
+    handshakes: int = 0
 
     async def handler(self, request: web.Request) -> web.StreamResponse:
-        if self.reject_with is not None:
-            return web.Response(status=self.reject_with)
+        self.handshakes += 1
+        if self.reject_with:
+            return web.Response(status=self.reject_with.pop(0))
         ws = web.WebSocketResponse()
         await ws.prepare(request)
         conn = Connection(dict(request.headers))
@@ -225,9 +228,41 @@ async def test_dropped_connection_without_retries_fails(
 async def test_rejected_handshake_is_not_retried(
     server: FakeStream, session: aiohttp.ClientSession
 ) -> None:
-    server.reject_with = 401
+    server.reject_with = [401]
 
     with pytest.raises(APIStatusError) as err:
         await _run(_stt(server, session), [_frame()], conn_options=ONE_RETRY)
 
     assert err.value.status_code == 401
+
+
+async def test_not_found_handshake_reconnects_to_the_new_url(
+    server: FakeStream, session: aiohttp.ClientSession, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    lookups: list[str] = []
+
+    def lookup(model: str, environment: str | None = None) -> str:
+        lookups.append(model)
+        return server.url
+
+    monkeypatch.setattr(provision, "lookup_web_url", lookup)
+    server.reject_with = [404]
+    engine = modal.STT(proxy_token_id="wk-test", proxy_token_secret="ws-test", http_session=session)
+
+    events = await _run(engine, [_frame() for _ in range(5)], conn_options=ONE_RETRY)
+
+    assert _types(events) == [SOS, INTERIM, FINAL, EOS, USAGE]
+    assert len(lookups) == 2
+    assert server.handshakes == 2
+
+
+async def test_not_found_handshake_on_a_pinned_url_is_not_retried(
+    server: FakeStream, session: aiohttp.ClientSession
+) -> None:
+    server.reject_with = [404]
+
+    with pytest.raises(APIStatusError) as err:
+        await _run(_stt(server, session), [_frame()], conn_options=ONE_RETRY)
+
+    assert err.value.status_code == 404
+    assert server.handshakes == 1
