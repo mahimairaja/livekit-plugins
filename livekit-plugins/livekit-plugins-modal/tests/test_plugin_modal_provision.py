@@ -246,3 +246,21 @@ def test_failed_proxy_token_setup_does_not_leak_the_token(
         provision.create_proxy_token("prod")
 
     assert tokens.tokens == {}
+
+
+def test_whisper_routes_resolve_their_fastapi_types() -> None:
+    # With string annotations FastAPI cannot see `Request` (imported inside `web()`) and
+    # asks for it as a query parameter: every request then fails with a 422.
+    provision.load_server_app(provision.ServerConfig(model=WHISPER))
+    api = _web_app("whisper_server", "WhisperServer")
+
+    route = next(r for r in api.routes if getattr(r, "path", None) == "/v1/transcribe")
+    assert [p.name for p in route.dependant.query_params] == ["language"]
+
+
+def _web_app(module: str, cls_name: str) -> Any:
+    """Build a server's FastAPI app without loading its model."""
+    from modal._utils.async_utils import synchronizer
+
+    user_cls = synchronizer._translate_in(getattr(sys.modules[module], cls_name))._user_cls
+    return user_cls.__dict__["web"]._get_raw_f()(user_cls.__new__(user_cls))
