@@ -24,7 +24,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
-STTModels = Literal["whisper-large-v3-turbo"]
+STTModels = Literal["parakeet-tdt-0.6b-v2", "whisper-large-v3-turbo"]
 
 SERVER_DIR = Path(__file__).parent / "server"
 
@@ -67,6 +67,14 @@ class ModalSTTModel:
 
 
 STT_MODELS: dict[str, ModalSTTModel] = {
+    "parakeet-tdt-0.6b-v2": ModalSTTModel(
+        template="parakeet_server.py",
+        cls_name="ParakeetServer",
+        engine_model="nvidia/parakeet-tdt-0.6b-v2",
+        gpu="L4",
+        language="en",
+        streaming=True,
+    ),
     "whisper-large-v3-turbo": ModalSTTModel(
         template="whisper_server.py",
         cls_name="WhisperServer",
@@ -77,7 +85,7 @@ STT_MODELS: dict[str, ModalSTTModel] = {
     ),
 }
 
-DEFAULT_MODEL: STTModels = "whisper-large-v3-turbo"
+DEFAULT_MODEL: STTModels = "parakeet-tdt-0.6b-v2"
 
 
 def get_model(name: str) -> ModalSTTModel:

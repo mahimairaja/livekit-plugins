@@ -22,7 +22,7 @@ Each plugin is the code from an open [livekit/agents](https://github.com/livekit
 | --- | --- | --- |
 | [`livekit-plugins-sherpa`](livekit-plugins/livekit-plugins-sherpa) | Speech-to-text (streaming zipformer, or batch Whisper, Moonshine, SenseVoice, Parakeet) and text-to-speech (Kokoro, Kitten, Piper) on [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx). ONNX Runtime only, no torch, no GPU. | STT [#7748](https://github.com/livekit/agents/pull/7748), TTS [#7749](https://github.com/livekit/agents/pull/7749) |
 | [`livekit-plugins-hf`](livekit-plugins/livekit-plugins-hf) | LLM: any Hugging Face chat model, run in process with `transformers`. Streaming and function tools. | [#7731](https://github.com/livekit/agents/pull/7731) |
-| [`livekit-plugins-modal`](livekit-plugins/livekit-plugins-modal) | Speech-to-text on your own [Modal](https://modal.com) GPUs: Whisper large-v3-turbo. Provision once from the CLI, then the agent finds the deployment by name. The one plugin here that is not local. | none, lives here |
+| [`livekit-plugins-modal`](livekit-plugins/livekit-plugins-modal) | Speech-to-text on your own [Modal](https://modal.com) GPUs: streaming Parakeet (English) or batch Whisper large-v3-turbo. Provision once from the CLI, then the agent finds the deployment by name. The one plugin here that is not local. | none, lives here |
 
 Package and import names match upstream (`from livekit.plugins import sherpa, hf`). When a PR merges, switch to the PyPI release and change nothing else.
 

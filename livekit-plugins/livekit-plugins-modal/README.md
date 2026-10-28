@@ -19,15 +19,15 @@ Requires Python 3.12 to 3.14, pins `livekit-agents==1.8.6` and `modal==1.6.1`, a
 Two steps. Provision once, from your laptop or CI:
 
 ```bash
-python -m livekit.plugins.modal provision stt --model whisper-large-v3-turbo --env main
+python -m livekit.plugins.modal provision stt --model parakeet-tdt-0.6b-v2 --env main
 ```
 
 It deploys the server if it is not there yet (rerunning it is safe), prints the endpoint URL and what the warm floor costs per hour, and creates a proxy token for the agent:
 
 ```
-app      livekit-stt-whisper-large-v3-turbo (env: main)
+app      livekit-stt-parakeet-tdt-0.6b-v2 (env: main)
 status   deployed now
-url      https://<workspace>-main--livekit-stt-whisper-large-v3-turbo-whisperserver-web.modal.run
+url      https://<workspace>--livekit-stt-parakeet-tdt-0-6b-v2-parakeetse-<hash>.modal.run
 gpu      L4
 warm     0 container(s), $0.00/h while idle
          scales to zero: the first request after idle waits for a cold start
@@ -44,7 +44,7 @@ from livekit.agents import AgentSession
 from livekit.plugins import modal, silero
 
 session = AgentSession(
-    stt=modal.STT(model="whisper-large-v3-turbo", env="main"),
+    stt=modal.STT(model="parakeet-tdt-0.6b-v2", env="main"),
     vad=silero.VAD.load(),
     # llm=..., tts=...
 )
@@ -52,13 +52,16 @@ session = AgentSession(
 
 The agent looks the deployment up by name on first use and caches the URL. It never deploys. If the deployment is missing, `modal.STT` raises `modal.DeploymentNotFoundError` with the exact `provision` command to run.
 
-Whisper is a batch model (`streaming=False`): `AgentSession` wraps it in `stt.StreamAdapter`, which sends each utterance the VAD detects.
+Parakeet streams over a WebSocket: interim transcripts while the user speaks, a final one when they pause. The final always precedes `END_OF_SPEECH` for the same utterance. Whisper is a batch model (`streaming=False`): `AgentSession` wraps it in `stt.StreamAdapter`, which sends each utterance the session VAD detects.
 
 ## Models
 
 | Model | Engine | GPU | Languages |
 | --- | --- | --- | --- |
-| `whisper-large-v3-turbo` (default) | [faster-whisper](https://github.com/SYSTRAN/faster-whisper), float16 | L4 | 99, auto-detected |
+| `parakeet-tdt-0.6b-v2` (default) | [NVIDIA NeMo](https://github.com/NVIDIA/NeMo), streaming | L4 | English |
+| `whisper-large-v3-turbo` | [faster-whisper](https://github.com/SYSTRAN/faster-whisper), float16, batch | L4 | 99, auto-detected |
+
+Parakeet TDT is an offline model, so the server streams it: Silero VAD finds utterance boundaries (500 ms of silence ends one), and the open utterance is decoded again every 0.5 s of new speech for the interim transcript. Each decode takes tens of milliseconds on an L4.
 
 Weights download once into the `livekit-stt-cache` Modal Volume, so later cold starts skip the download.
 
@@ -66,7 +69,7 @@ Weights download once into the `livekit-stt-cache` Modal Volume, so later cold s
 
 | Flag | Default | Description |
 | --- | --- | --- |
-| `--model` | `whisper-large-v3-turbo` | Model to deploy |
+| `--model` | `parakeet-tdt-0.6b-v2` | Model to deploy |
 | `--env` | your profile's | Modal environment |
 | `--gpu` | the model's | GPU type, e.g. `T4`, `L4`, `A10`, `H100` |
 | `--region` | any | Pin containers to a region, e.g. `us-east`, close to your LiveKit server. Costs 1.15x to 1.75x |
@@ -81,9 +84,9 @@ With `--min-containers 0` the deployment costs nothing while unused, but the fir
 
 | Option | Default | Description |
 | --- | --- | --- |
-| `model` | `whisper-large-v3-turbo` | Deployed model |
+| `model` | `parakeet-tdt-0.6b-v2` | Deployed model |
 | `env` | your profile's | Modal environment of the deployment |
-| `language` | auto-detect | Language code, e.g. `"en"` |
+| `language` | model's, or auto-detect | Language code, e.g. `"en"`. Whisper detects it when unset |
 | `proxy_token_id` / `proxy_token_secret` | `$MODAL_PROXY_TOKEN_ID` / `$MODAL_PROXY_TOKEN_SECRET` | Modal proxy token. The endpoint rejects requests without one |
 | `base_url` | looked up | Use this endpoint URL instead of looking it up |
 | `auto_provision` | `False` | Deploy the model if it is missing. Takes minutes; development only |
@@ -99,10 +102,10 @@ curl -H "Modal-Key: $MODAL_PROXY_TOKEN_ID" -H "Modal-Secret: $MODAL_PROXY_TOKEN_
   --data-binary @clip.wav "$URL/v1/transcribe?language=en"
 ```
 
-The body is 16 kHz mono 16-bit WAV; the response has `text`, `language`, `duration` and `segments`.
+The body is 16 kHz mono 16-bit WAV; the response has `text`, `language`, `duration` and `segments`. Parakeet also serves `WS /v1/stream`: send binary 16 kHz mono 16-bit PCM and `{"type": "flush"}` or `{"type": "close"}`; receive `start_of_speech`, `interim`, `final` and `end_of_speech` messages with times in seconds since the stream started.
 
 ## Remove
 
 ```bash
-modal app stop livekit-stt-whisper-large-v3-turbo --env main
+modal app stop livekit-stt-parakeet-tdt-0.6b-v2 --env main
 ```
