@@ -175,10 +175,16 @@ def create_proxy_token(environment: str | None) -> tuple[str, str]:
     """Create a workspace proxy token and return (token_id, token_secret).
 
     On workspaces with RBAC, tokens are scoped to environments, so the new token is also
-    allowed into `environment`.
+    allowed into `environment`. Elsewhere tokens work in every environment, and Modal
+    rejects `allow` for them. If anything fails after creation, the token is deleted.
     """
     ws = modal.Workspace.from_context()
     token = ws.proxy_tokens.create()
-    if environment:
-        ws.proxy_tokens.allow(token.token_id, environment)
+    try:
+        scoped = any(t.token_id == token.token_id and t.scoped for t in ws.proxy_tokens.list())
+        if scoped and environment:
+            ws.proxy_tokens.allow(token.token_id, environment)
+    except BaseException:
+        ws.proxy_tokens.delete(token.token_id)
+        raise
     return token.token_id, token.token_secret

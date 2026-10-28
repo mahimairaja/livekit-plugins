@@ -25,8 +25,8 @@ HTTP contract (all routes need the Modal-Key and Modal-Secret proxy auth headers
         -> {"text", "language", "duration", "segments": [{"start", "end", "text"}]}
 """
 
-from __future__ import annotations
-
+# No `from __future__ import annotations`: FastAPI resolves route annotations against the
+# module globals, and the fastapi types are imported inside `web()`, in the container only.
 import asyncio
 import io
 import json
