@@ -230,8 +230,16 @@ class _StreamSession:
                 continue
             self._utterance.append(window)
             self._since_interim += VAD_WINDOW
-            if "end" in event or self._samples - self._start >= MAX_UTTERANCE_S * SAMPLE_RATE:
+            if "end" in event:
                 await self._finalize()
+            elif self._samples - self._start >= MAX_UTTERANCE_S * SAMPLE_RATE:
+                # The VAD is still triggered and will not report a new "start" until it sees
+                # an "end", so open the next utterance here or the speech after the cut is lost.
+                await self._finalize()
+                self._utterance = []
+                self._start = self._samples
+                self._since_interim = 0
+                await self._send("start_of_speech", start=self._start / SAMPLE_RATE)
         if self._utterance is not None and self._since_interim >= INTERIM_S * SAMPLE_RATE:
             self._since_interim = 0
             text = await self._decode()
@@ -242,7 +250,8 @@ class _StreamSession:
     async def _finalize(self) -> None:
         if self._utterance is None:
             return
-        text = await self._decode()
+        # An utterance opened at the length cap can be closed before it gets any audio.
+        text = await self._decode() if self._utterance else ""
         span = self._span()
         if text:
             await self._send("final", text=text, **span)

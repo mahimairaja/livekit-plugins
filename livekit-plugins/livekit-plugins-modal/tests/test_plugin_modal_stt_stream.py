@@ -7,6 +7,8 @@ LiveKit side (RecognizeStream, input resampling, retries, event channel) is the 
 from __future__ import annotations
 
 import json
+import sys
+import types
 from collections.abc import AsyncIterator, Callable
 from dataclasses import dataclass, field
 from typing import Any
@@ -266,3 +268,69 @@ async def test_not_found_handshake_on_a_pinned_url_is_not_retried(
 
     assert err.value.status_code == 404
     assert server.handshakes == 1
+
+
+class TriggeredVAD:
+    """Silero's VADIterator as it behaves during a long run of speech: one "start", no "end"."""
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        self._started = False
+
+    def __call__(self, window: Any) -> dict[str, int] | None:
+        if self._started:
+            return None
+        self._started = True
+        return {"start": 0}
+
+    def reset_states(self) -> None:
+        self._started = False
+
+
+@dataclass
+class FakeSocket:
+    """The server's side of the WebSocket: scripted client messages in, sent messages out."""
+
+    incoming: list[dict[str, Any]]
+    sent: list[dict[str, Any]] = field(default_factory=list)
+
+    async def receive(self) -> dict[str, Any]:
+        return self.incoming.pop(0)
+
+    async def send_text(self, text: str) -> None:
+        self.sent.append(json.loads(text))
+
+    async def close(self) -> None:
+        pass
+
+
+async def test_server_keeps_transcribing_past_the_utterance_length_cap(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    provision.load_server_app(provision.ServerConfig(model="parakeet-tdt-0.6b-v2"))
+    server_module = sys.modules["parakeet_server"]
+    silero = types.ModuleType("silero_vad")
+    silero.VADIterator = TriggeredVAD  # type: ignore[attr-defined]
+    silero.load_silero_vad = lambda: None  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "silero_vad", silero)
+    monkeypatch.setattr(server_module, "_tensor", lambda window: window)
+    monkeypatch.setattr(server_module, "MAX_UTTERANCE_S", 1.0)
+    monkeypatch.setattr(server_module, "INTERIM_S", 10.0)
+
+    # 1.5 s of uninterrupted speech: the cap cuts it at 1 s and the VAD never reports an end.
+    pcm = np.full(24000, 1000, dtype=np.int16).tobytes()
+    ws = FakeSocket(
+        [
+            {"type": "websocket.receive", "bytes": pcm},
+            {"type": "websocket.receive", "text": '{"type": "close"}'},
+        ]
+    )
+    session = server_module._StreamSession(lambda audio: f"{len(audio)} samples", ws)
+
+    await session.run()
+
+    kinds = [m["type"] for m in ws.sent]
+    assert kinds == ["start_of_speech", "final", "end_of_speech"] * 2
+    first_final, second_start, second_final = ws.sent[1], ws.sent[3], ws.sent[4]
+    assert second_start["start"] == pytest.approx(first_final["end"])
+    # The speech after the cut is transcribed, up to the last whole VAD window.
+    assert second_final["end"] == pytest.approx(1.5, abs=512 / 16000)
