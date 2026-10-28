@@ -1,4 +1,4 @@
-"""livekit-plugins-modal STT contract, against a fake endpoint on localhost (no Modal account).
+"""livekit-plugins-modal batch STT contract, against a fake endpoint on localhost (no Modal account).
 
 The fake server speaks the deployed server's HTTP contract. The LiveKit side (STT.recognize,
 retries, APIConnectOptions, audio frames) is the real SDK.
@@ -86,8 +86,11 @@ def _speech(seconds: float = 0.5, *, sample_rate: int = 48000, channels: int = 2
     return rtc.AudioFrame(pcm.tobytes(), sample_rate, channels, n)
 
 
+WHISPER = "whisper-large-v3-turbo"
+
+
 def _stt(session: aiohttp.ClientSession, **kwargs: Any) -> modal.STT:
-    return modal.STT(**{**TOKEN, "http_session": session, **kwargs})
+    return modal.STT(**{**TOKEN, "model": WHISPER, "http_session": session, **kwargs})
 
 
 async def test_recognize_sends_16k_mono_wav_with_proxy_auth(
@@ -166,11 +169,12 @@ def test_proxy_token_defaults_to_the_environment(monkeypatch: pytest.MonkeyPatch
 
 
 def test_batch_model_needs_the_stream_adapter() -> None:
-    engine = modal.STT(**TOKEN)
+    engine = modal.STT(**TOKEN, model=WHISPER)
 
     assert engine.capabilities.streaming is False
-    assert engine.model == "whisper-large-v3-turbo"
     assert engine.provider == "modal"
+    with pytest.raises(NotImplementedError, match="StreamAdapter"):
+        engine.stream()
 
 
 async def test_endpoint_is_looked_up_by_name_once(

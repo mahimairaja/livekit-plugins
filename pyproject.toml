@@ -76,7 +76,7 @@ ignore_missing_imports = true
 
 # Imported only inside the Modal containers, never installed locally.
 [[tool.mypy.overrides]]
-module = ["faster_whisper.*"]
+module = ["faster_whisper.*", "nemo.*", "silero_vad.*", "torch.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

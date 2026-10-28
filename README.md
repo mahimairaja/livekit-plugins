@@ -46,7 +46,7 @@ STT, TTS and LLM plugins for [LiveKit Agents](https://github.com/livekit/agents)
     <td><a href="livekit-plugins/livekit-plugins-hf"><img src="https://img.shields.io/badge/source-GitHub-181717?logo=github&style=flat-square" alt="livekit-plugins-hf source"></a></td>
   </tr>
   <tr>
-    <td><a href="livekit-plugins/livekit-plugins-modal"><b>livekit-plugins-modal</b></a><br><sub>Speech-to-text on your own <a href="https://modal.com">Modal</a> GPUs: Whisper large-v3-turbo. Provision once from the CLI, then the agent finds the deployment by name. The one plugin here that is not local.</sub></td>
+    <td><a href="livekit-plugins/livekit-plugins-modal"><b>livekit-plugins-modal</b></a><br><sub>Speech-to-text on your own <a href="https://modal.com">Modal</a> GPUs: streaming Parakeet (English) or batch Whisper large-v3-turbo. Provision once from the CLI, then the agent finds the deployment by name. The one plugin here that is not local.</sub></td>
     <td>STT</td>
     <td>none, lives here</td>
     <td>–</td>

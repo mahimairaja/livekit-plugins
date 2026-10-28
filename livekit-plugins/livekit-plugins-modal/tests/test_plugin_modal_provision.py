@@ -258,6 +258,15 @@ def test_whisper_routes_resolve_their_fastapi_types() -> None:
     assert [p.name for p in route.dependant.query_params] == ["language"]
 
 
+def test_parakeet_routes_resolve_their_fastapi_types() -> None:
+    provision.load_server_app(provision.ServerConfig(model="parakeet-tdt-0.6b-v2"))
+    api = _web_app("parakeet_server", "ParakeetServer")
+    routes = {getattr(r, "path", None): r for r in api.routes}
+
+    assert [p.name for p in routes["/v1/transcribe"].dependant.query_params] == ["language"]
+    assert routes["/v1/stream"].dependant.query_params == []
+
+
 def _web_app(module: str, cls_name: str) -> Any:
     """Build a server's FastAPI app without loading its model."""
     from modal._utils.async_utils import synchronizer

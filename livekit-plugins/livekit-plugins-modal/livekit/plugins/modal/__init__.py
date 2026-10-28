@@ -23,7 +23,7 @@ from livekit.agents import Plugin
 from .log import logger
 from .models import STT_MODELS, ModalSTTModel, STTModels
 from .provision import DeploymentNotFoundError
-from .stt import STT
+from .stt import STT, SpeechStream
 from .version import __version__
 
 __all__ = [
@@ -32,6 +32,7 @@ __all__ = [
     "DeploymentNotFoundError",
     "ModalSTTModel",
     "STTModels",
+    "SpeechStream",
     "__version__",
 ]
 
