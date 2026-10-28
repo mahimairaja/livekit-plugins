@@ -171,15 +171,21 @@ class STT(stt.STT):
             ) as resp:
                 if resp.status >= 400:
                     body = await resp.text()
-                    if resp.status == 404 and not self._pinned_url:
+                    stale_url = resp.status == 404 and not self._pinned_url
+                    if stale_url:
                         # The App was stopped or redeployed under a new URL; look it up again.
                         self._base_url = None
-                    raise APIStatusError(
+                    err = APIStatusError(
                         f"Modal STT request failed: {body[:200]}",
                         status_code=resp.status,
                         request_id=resp.headers.get("modal-function-call-id"),
                         body=body,
                     )
+                    if stale_url:
+                        # APIStatusError forces 4xx to non-retryable; this one is fixed by
+                        # retrying against the re-resolved URL.
+                        err.retryable = True
+                    raise err
                 result: dict[str, Any] = await resp.json()
         except TimeoutError:
             raise APITimeoutError() from None

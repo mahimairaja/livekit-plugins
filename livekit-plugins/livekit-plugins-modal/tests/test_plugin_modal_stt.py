@@ -212,6 +212,39 @@ async def test_not_found_drops_the_cached_url(
     assert len(lookups) == 2
 
 
+async def test_not_found_is_retried_against_the_new_url(
+    endpoint: FakeEndpoint, session: aiohttp.ClientSession, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    lookups: list[str] = []
+
+    def lookup(model: str, environment: str | None = None) -> str:
+        lookups.append(model)
+        return endpoint.url
+
+    monkeypatch.setattr(provision, "lookup_web_url", lookup)
+    endpoint.fail_with = [404]
+    engine = _stt(session)
+
+    event = await engine.recognize([_speech()], conn_options=ONE_RETRY)
+
+    assert event.alternatives[0].text == "hello world"
+    assert len(lookups) == 2
+    assert len(endpoint.requests) == 2
+
+
+async def test_not_found_on_a_pinned_url_is_not_retried(
+    endpoint: FakeEndpoint, session: aiohttp.ClientSession
+) -> None:
+    endpoint.fail_with = [404]
+    engine = _stt(session, base_url=endpoint.url)
+
+    with pytest.raises(APIStatusError) as err:
+        await engine.recognize([_speech()], conn_options=ONE_RETRY)
+
+    assert err.value.status_code == 404
+    assert len(endpoint.requests) == 1
+
+
 async def test_missing_deployment_names_the_provision_command(
     session: aiohttp.ClientSession, monkeypatch: pytest.MonkeyPatch
 ) -> None:
