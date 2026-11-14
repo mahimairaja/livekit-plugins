@@ -179,6 +179,26 @@ def test_detects_orpheus_from_config() -> None:
     assert not hf_tts._is_orpheus(SimpleNamespace(model_type="vits", vocab_size=200000))
 
 
+def test_generative_waveform_model_is_rejected(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Bark has no forward(); it speaks only through generate() with its own inputs
+    import transformers
+
+    def _config(*args: Any, **kwargs: Any) -> SimpleNamespace:
+        return SimpleNamespace(model_type="bark", vocab_size=10000)
+
+    def _tokenizer(*args: Any, **kwargs: Any) -> object:
+        return object()
+
+    monkeypatch.setattr(transformers.AutoConfig, "from_pretrained", _config)
+    monkeypatch.setattr(transformers.AutoTokenizer, "from_pretrained", _tokenizer)
+    key = hf_tts._TTSKey(
+        model="suno/bark-small", revision=None, device="cpu", dtype="auto", trust_remote_code=False
+    )
+
+    with pytest.raises(ValueError, match="bark"):
+        hf_tts._load_tts(key, local_files_only=True)
+
+
 def test_download_fetches_snac_for_orpheus(monkeypatch: pytest.MonkeyPatch, tmp_path: Any) -> None:
     import huggingface_hub
 
