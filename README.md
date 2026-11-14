@@ -39,9 +39,9 @@ STT, TTS and LLM plugins for [LiveKit Agents](https://github.com/livekit/agents)
     <td><a href="livekit-plugins/livekit-plugins-sherpa"><img src="https://img.shields.io/badge/source-GitHub-181717?logo=github&style=flat-square" alt="livekit-plugins-sherpa source"></a></td>
   </tr>
   <tr>
-    <td><a href="livekit-plugins/livekit-plugins-hf"><b>livekit-plugins-hf</b></a><br><sub>Any Hugging Face chat model, run in process with <code>transformers</code>. Streaming and function tools.</sub></td>
-    <td>LLM</td>
-    <td><a href="https://github.com/livekit/agents/pull/7731"><img src="https://img.shields.io/github/pulls/detail/state/livekit/agents/7731?label=LLM%20%237731&style=flat-square" alt="livekit/agents#7731"></a></td>
+    <td><a href="livekit-plugins/livekit-plugins-hf"><b>livekit-plugins-hf</b></a><br><sub>Hugging Face models run in process with <code>transformers</code>: chat models with streaming and function tools, Whisper-style STT (fine-tunes like SunflowerASR included), and Orpheus or VITS/MMS TTS. Or send STT and TTS to a Hugging Face Inference Provider or your own endpoint.</sub></td>
+    <td>LLM, STT, TTS</td>
+    <td><a href="https://github.com/livekit/agents/pull/7731"><img src="https://img.shields.io/github/pulls/detail/state/livekit/agents/7731?label=LLM%20%237731&style=flat-square" alt="livekit/agents#7731"></a><br><a href="https://github.com/livekit/agents/pull/8563"><img src="https://img.shields.io/github/pulls/detail/state/livekit/agents/8563?label=STT%20%238563&style=flat-square" alt="livekit/agents#8563"></a><br><a href="https://github.com/livekit/agents/pull/8564"><img src="https://img.shields.io/github/pulls/detail/state/livekit/agents/8564?label=TTS%20%238564&style=flat-square" alt="livekit/agents#8564"></a><br><a href="https://github.com/livekit/agents/pull/8565"><img src="https://img.shields.io/github/pulls/detail/state/livekit/agents/8565?label=Hosted%20%238565&style=flat-square" alt="livekit/agents#8565"></a></td>
     <td><a href="https://pypi.org/project/livekit-plugins-hf/"><img src="https://img.shields.io/pypi/v/livekit-plugins-hf?label=pypi&style=flat-square" alt="livekit-plugins-hf on PyPI"></a></td>
     <td><a href="livekit-plugins/livekit-plugins-hf"><img src="https://img.shields.io/badge/source-GitHub-181717?logo=github&style=flat-square" alt="livekit-plugins-hf source"></a></td>
   </tr>
