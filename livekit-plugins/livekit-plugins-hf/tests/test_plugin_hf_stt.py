@@ -21,10 +21,16 @@ class _FakePipeline:
         error: Exception | None = None,
         *,
         multilingual: bool = True,
+        ctc: bool = False,
     ) -> None:
-        self.model = SimpleNamespace(
-            generation_config=SimpleNamespace(
-                lang_to_id={"<|en|>": 50259}, is_multilingual=multilingual
+        # CTC models such as wav2vec2 have no generation_config at all
+        self.model = (
+            SimpleNamespace()
+            if ctc
+            else SimpleNamespace(
+                generation_config=SimpleNamespace(
+                    lang_to_id={"<|en|>": 50259}, is_multilingual=multilingual
+                )
             )
         )
         self.text = text
@@ -138,13 +144,46 @@ async def test_english_only_whisper_gets_no_language_or_task(
     assert pipeline.calls[0][2] == {}
 
 
-async def test_non_whisper_model_gets_no_language(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_fine_tune_token_extends_caller_generation_config(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    caller_config = SimpleNamespace(lang_to_id={"<|en|>": 50259}, max_new_tokens=64)
     pipeline = _FakePipeline()
+    instance = _install(
+        monkeypatch,
+        pipeline,
+        language_token_ids={"lug": 50332},
+        generate_kwargs={"generation_config": caller_config},
+    )
+
+    await instance.recognize(_frame(0.2), language="lug")
+
+    config = pipeline.calls[0][2]["generate_kwargs"]["generation_config"]
+    assert config.max_new_tokens == 64
+    assert config.lang_to_id == {"<|en|>": 50259, "<|lug|>": 50332}
+    assert caller_config.lang_to_id == {"<|en|>": 50259}
+
+
+async def test_non_whisper_model_gets_no_language(monkeypatch: pytest.MonkeyPatch) -> None:
+    pipeline = _FakePipeline(ctc=True)
     instance = _install(monkeypatch, pipeline, is_whisper=False, language="en")
 
-    await instance.recognize(_frame(0.2))
+    event = await instance.recognize(_frame(31.0))
 
+    assert event.alternatives[0].text == "hello there"
     assert pipeline.calls[0][2] == {}
+
+
+async def test_whisper_long_form_past_30_seconds(monkeypatch: pytest.MonkeyPatch) -> None:
+    # transformers needs timestamps for Whisper input over 30 s
+    pipeline = _FakePipeline()
+    instance = _install(monkeypatch, pipeline)
+
+    await instance.recognize(_frame(29.9))
+    await instance.recognize(_frame(30.1))
+
+    assert "return_timestamps" not in pipeline.calls[0][2]
+    assert pipeline.calls[1][2]["return_timestamps"] is True
 
 
 async def test_empty_buffer_skips_model(monkeypatch: pytest.MonkeyPatch) -> None:
