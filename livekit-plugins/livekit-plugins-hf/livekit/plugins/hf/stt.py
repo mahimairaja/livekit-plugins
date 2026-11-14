@@ -264,7 +264,9 @@ class STT(stt.STT):
         generate_kwargs = dict(self._opts.generate_kwargs)
         # a fine-tune that forces its own decoder prefix owns the language and task, and
         # English-only checkpoints (*.en) reject both
-        multilingual = getattr(loaded.pipeline.model.generation_config, "is_multilingual", True)
+        # CTC models have no generation_config, so only Whisper reads it
+        model_config = getattr(loaded.pipeline.model, "generation_config", None)
+        multilingual = getattr(model_config, "is_multilingual", True)
         if (
             loaded.is_whisper
             and multilingual is not False
@@ -276,7 +278,11 @@ class STT(stt.STT):
                     # Whisper looks languages up in lang_to_id, so add the fine-tune's
                     # token there instead of overwriting the shared generation config
                     token = f"<|{language}|>"
-                    generation_config = copy.deepcopy(loaded.pipeline.model.generation_config)
+                    # extend the caller's config when given, so its settings are kept
+                    generation_config = copy.deepcopy(
+                        generate_kwargs.get("generation_config")
+                        or loaded.pipeline.model.generation_config
+                    )
                     generation_config.lang_to_id = {
                         **(getattr(generation_config, "lang_to_id", None) or {}),
                         token: token_id,
@@ -289,11 +295,17 @@ class STT(stt.STT):
         call_kwargs: dict[str, Any] = {}
         if generate_kwargs:
             call_kwargs["generate_kwargs"] = generate_kwargs
+        if loaded.is_whisper and audio.size > _WHISPER_WINDOW_S * loaded.sample_rate:
+            # past 30 s Whisper switches to long-form generation, which needs timestamps
+            call_kwargs["return_timestamps"] = True
         with loaded.lock:
             result = loaded.pipeline(
                 {"raw": audio, "sampling_rate": loaded.sample_rate}, **call_kwargs
             )
         return str(result.get("text", "")).strip()
+
+
+_WHISPER_WINDOW_S = 30
 
 
 def _log_prewarm_error(fut: asyncio.Future[Any]) -> None:
