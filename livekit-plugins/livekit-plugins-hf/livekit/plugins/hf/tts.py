@@ -127,8 +127,9 @@ class TTS(tts.TTS):
           ``canopylabs/orpheus-3b-0.1-ft`` and its fine-tunes. Audio is streamed while
           the model generates, ``chunk_frames`` SNAC frames (about 85 ms each) at a time.
           Needs the ``snac`` package (``pip install "livekit-plugins-hf[orpheus]"``).
-        - **Text-to-waveform** models loaded by ``AutoModelForTextToWaveform``, such as
-          the VITS-based ``facebook/mms-tts-*`` voices for about 1,100 languages.
+        - **Text-to-waveform** models that return audio from one forward pass: VITS,
+          such as the ``facebook/mms-tts-*`` voices for about 1,100 languages, and
+          FastSpeech2 with HiFi-GAN. Generative ones (Bark, MusicGen, ...) are rejected.
 
         Each reply is split into sentences by the ``AgentSession`` and synthesized one
         sentence at a time. Weights load in a background thread when the session
@@ -529,6 +530,11 @@ def _synthesize_waveform(loaded: _LoadedTTS, text: str) -> np.ndarray:
     return samples
 
 
+# text-to-waveform models whose forward() returns the waveform; the rest (Bark,
+# MusicGen, SeamlessM4T, ...) only speak through generate() with their own inputs
+_FORWARD_WAVEFORM_TYPES = frozenset({"vits", "fastspeech2_conformer_with_hifigan"})
+
+
 def _is_orpheus(config: Any) -> bool:
     """Orpheus models are Llama models with the SNAC audio codes in their vocabulary."""
     vocab_size = int(getattr(config, "vocab_size", 0) or 0)
@@ -562,6 +568,13 @@ def _load_tts(key: _TTSKey, *, local_files_only: bool) -> _LoadedTTS:
                 codec=_load_snac(model.device, local_files_only=local_files_only),
             )
         else:
+            model_type = getattr(config, "model_type", "")
+            if model_type not in _FORWARD_WAVEFORM_TYPES:
+                raise ValueError(
+                    f"{key.model} ({model_type or 'unknown type'}) is not supported: "
+                    "hf.TTS runs Orpheus models and single-pass text-to-waveform models "
+                    f"({', '.join(sorted(_FORWARD_WAVEFORM_TYPES))})"
+                )
             from transformers import AutoModelForTextToWaveform
 
             model = AutoModelForTextToWaveform.from_pretrained(

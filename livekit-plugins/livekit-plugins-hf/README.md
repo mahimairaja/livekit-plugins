@@ -94,7 +94,8 @@ session = AgentSession(
   and its fine-tunes. Audio is decoded and sent while the model is still generating, a few
   85 ms frames at a time (`chunk_frames`), so speech starts before the sentence is done.
   `voice` is prepended to the text as `"{voice}: {text}"`. Needs the `orpheus` extra and a GPU.
-- **Text to waveform**: models `AutoModelForTextToWaveform` loads, such as the VITS-based
+- **Text to waveform**: models that return audio from one forward pass (VITS and
+  FastSpeech2 with HiFi-GAN), such as the VITS-based
   [MMS voices](https://huggingface.co/models?search=facebook/mms-tts) for about 1,100
   languages (`facebook/mms-tts-eng`, `facebook/mms-tts-swh`, ...). Small enough for CPU.
   Check each model's license before using it commercially.
