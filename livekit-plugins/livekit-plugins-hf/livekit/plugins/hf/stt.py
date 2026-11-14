@@ -229,8 +229,7 @@ class STT(stt.STT):
             # take the file's mime type, others read and base64-encode it
             with tempfile.TemporaryDirectory() as tmp:
                 path = os.path.join(tmp, "audio.wav")
-                with open(path, "wb") as f:
-                    f.write(frame.to_wav_bytes())
+                await asyncio.to_thread(_write_wav, path, frame)
                 output = await _hosted.call(
                     asyncio.wait_for(
                         self._client.automatic_speech_recognition(
@@ -263,8 +262,14 @@ class STT(stt.STT):
         if audio.size == 0:
             return ""
         generate_kwargs = dict(self._opts.generate_kwargs)
-        # a fine-tune that forces its own decoder prefix owns the language and task
-        if loaded.is_whisper and "forced_decoder_ids" not in generate_kwargs:
+        # a fine-tune that forces its own decoder prefix owns the language and task, and
+        # English-only checkpoints (*.en) reject both
+        multilingual = getattr(loaded.pipeline.model.generation_config, "is_multilingual", True)
+        if (
+            loaded.is_whisper
+            and multilingual is not False
+            and "forced_decoder_ids" not in generate_kwargs
+        ):
             generate_kwargs.setdefault("task", "transcribe")
             if language and "language" not in generate_kwargs:
                 if (token_id := self._opts.language_token_ids.get(language)) is not None:
@@ -366,3 +371,8 @@ def _load_stt(key: _STTKey, *, local_files_only: bool) -> _LoadedSTT:
         asr({"raw": np.zeros(sample_rate // 2, dtype=np.float32), "sampling_rate": sample_rate})
     logger.info("STT model loaded", extra={"model": key.model})
     return loaded
+
+
+def _write_wav(path: str, frame: rtc.AudioFrame) -> None:
+    with open(path, "wb") as f:
+        f.write(frame.to_wav_bytes())

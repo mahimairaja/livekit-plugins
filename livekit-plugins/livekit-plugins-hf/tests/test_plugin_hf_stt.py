@@ -15,9 +15,17 @@ pytestmark = pytest.mark.unit
 
 
 class _FakePipeline:
-    def __init__(self, text: str = " hello there ", error: Exception | None = None) -> None:
+    def __init__(
+        self,
+        text: str = " hello there ",
+        error: Exception | None = None,
+        *,
+        multilingual: bool = True,
+    ) -> None:
         self.model = SimpleNamespace(
-            generation_config=SimpleNamespace(lang_to_id={"<|en|>": 50259})
+            generation_config=SimpleNamespace(
+                lang_to_id={"<|en|>": 50259}, is_multilingual=multilingual
+            )
         )
         self.text = text
         self.error = error
@@ -116,6 +124,18 @@ async def test_fine_tune_language_token_ids(monkeypatch: pytest.MonkeyPatch) -> 
     # the model's own config is copied, never changed
     assert pipeline.model.generation_config.lang_to_id == {"<|en|>": 50259}
     assert pipeline.calls[1][2]["generate_kwargs"] == {"task": "transcribe", "language": "en"}
+
+
+async def test_english_only_whisper_gets_no_language_or_task(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # transformers rejects task and language for checkpoints such as whisper-base.en
+    pipeline = _FakePipeline(multilingual=False)
+    instance = _install(monkeypatch, pipeline, language="en")
+
+    await instance.recognize(_frame(0.2))
+
+    assert pipeline.calls[0][2] == {}
 
 
 async def test_non_whisper_model_gets_no_language(monkeypatch: pytest.MonkeyPatch) -> None:
